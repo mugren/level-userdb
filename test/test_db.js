@@ -127,7 +127,7 @@ describe('db', function() {
     var origPassword = 'supersecret'
     var newPassword = 'blahr'
 
-    var user 
+    var user
 
     before(function(done) {
       dbi.addUser(origEmail, origPassword, {some:"data"}, function(err) {
@@ -286,13 +286,10 @@ describe('db', function() {
       var NUM_USERS = 20
 
       var i = 0
-      async.whilst(
-        function() { return i < NUM_USERS },
-        function(cb) {
+      async.whilst(async function test() { return i < NUM_USERS }, async function iter(cb) {
           dbi.addUser(i + '-' + baseEmail, password, data, cb)
           i++
-        },
-        start
+        }, setTimeout(start, 2000)
       )
 
       var cnt = 0

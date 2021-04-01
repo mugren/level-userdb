@@ -1,6 +1,7 @@
 var async = require('async')
-var bcrypt = require('bcrypt')
+var bcrypt = require('bcryptjs')
 var levelup = require('levelup')
+var leveldown = require('leveldown')
 var through = require('through')
 var bytewise = require('bytewise')
 
@@ -56,7 +57,7 @@ function buildUser(password, data, cb, insecure) {
 
 // DB can be a string, undefined or an existing LevelUP-compatible object
 module.exports = function(db) {
-  var name = "./level-userdb.db"
+  var name = leveldown("./level-userdb.db")
   if (typeof db === 'string') {
     name = db
   }
@@ -82,6 +83,7 @@ module.exports = function(db) {
   db.findUser = (function (email, cb) {
     this.get(k(email), function(err, user) {
       if (err) return cb(err)
+      user = JSON.parse(user.toString())
       user.modifiedDate = new Date(user.modifiedTimestamp.unixtime)
       user.createdDate = new Date(user.createdTimestamp.unixtime)
       user.email = email;
@@ -112,7 +114,7 @@ module.exports = function(db) {
         modifiedTimestamp: genTimestamp(d),
         data:data
       }
-      self.put(k(email), userObj, cb)
+      self.put(k(email), JSON.stringify(userObj), cb)
     })
   }).bind(db)
 
@@ -138,7 +140,7 @@ module.exports = function(db) {
         self.batch()
           .del(k(email))
           // it's strange that we have to specify the valueEnconding here again
-          .put(k(newEmail), user, {valueEncoding: "json"})
+          .put(k(newEmail), JSON.stringify(user), {valueEncoding: "json"})
           .write(function(err) {
             done()
             cb(err)
@@ -162,7 +164,7 @@ module.exports = function(db) {
           }
           userObj.modifiedTimestamp = genTimestamp()
           userObj.data = user.data;
-          self.put(k(email), userObj, function(err) {
+          self.put(k(email), JSON.stringify(userObj), function(err) {
             done()
             cb(err)
           })
@@ -185,7 +187,7 @@ module.exports = function(db) {
         }
         user.data = data
         user.modifiedTimestamp = genTimestamp()
-        self.put(k(email), user, function(err) {
+        self.put(k(email), JSON.stringify(user), function(err) {
           done()
           cb(err)
         })
@@ -195,7 +197,7 @@ module.exports = function(db) {
 
   db.createUserStream = (function(opts) {
     return this.createReadStream(opts).pipe(through(function write(data) {
-      var u = data.value
+      var u = JSON.parse(data.value.toString())
       u.modifiedDate = new Date(u.modifiedTimestamp.unixtime)
       u.createdDate = new Date(u.createdTimestamp.unixtime)
       u.email = dk(data.key);
